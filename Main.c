@@ -34,10 +34,13 @@ int main (int argc, char *argv[])
 {
     int success = 1;
     int err = 0;
+	int imaqError = 0;
     char** imagePath;       // Image Path
     int cancelled;
     ImageType imageType;    // Image Type
     Image* image;           // Image
+	char curdir[512];
+	GetCurrentDirectoryA(sizeof(curdir), curdir);
 
 
     // IMAQ Vision creates windows in a separate thread
@@ -70,11 +73,24 @@ int main (int argc, char *argv[])
 		imaqGetImageSize(image, &width, &height);
 		Rect rect = { height / 3, width / 3, height / 3, width / 3 };
 		//imaqOverlayOval(image, rect, &color, IMAQ_DRAW_VALUE, NULL);5
-		for (float xcolor = (float)1.0; xcolor < (float)1.0e9; xcolor *= (float)10.0) {
-			printf("Color is %5.3f. Hit enter to see the next color\n", xcolor);
+		for (float xcolor = (float)1.0; xcolor <= (float)16.0; xcolor += (float)1.0) {
+			printf("Color is %5.3f. Please type the name of the color:\n", xcolor);
 			imaqDrawShapeOnImage(image, image, rect, IMAQ_DRAW_VALUE, IMAQ_SHAPE_OVAL, xcolor);
 			imaqDisplayImage(image, DISPLAY_WINDOW, TRUE);
-			getchar();
+			char str[30], fname[120];
+			gets(str);
+			Image *newImage = imaqCreateImage(IMAQ_IMAGE_RGB, 0);
+			imaqError = imaqDuplicate(newImage, image);
+			sprintf(fname, "%s_%d.jpg", str, (int)xcolor);
+			printf("Writing %s\\%s ", curdir, fname);
+			imaqError = imaqWriteJPEGFile(newImage, fname, 750, NULL);
+			if (imaqError) {
+				printf(" .. failed, %d %s. \n", imaqError, imaqGetErrorText(imaqError));
+				imaqDispose(newImage);
+				break;
+			}
+			else printf("\n");
+			imaqDispose(newImage);
 		}
 
         // Wait for a key press before exiting
